@@ -1,45 +1,33 @@
 import tensorflow as tf
-import os
+import time
+import pandas as pd
 
-def load_data_using_tfdata(folders, dir_path, batch_size=32):
-    def prepare_for_training(ds, cache=True, shuffle_buffer_size=1000):
-        if cache:
-            if isinstance(cache, str):
-                ds = ds.cache(cache)
-            else:
-                ds = ds.cache()
+class CsvDataset(tf.data.Dataset):
+    def _generator(file_path):
+        # Opening the CSV file
+        csv_data = pd.read_csv(file_path)
+        num_samples = len(csv_data)
         
-        ds = ds.shuffle(buffer_size=shuffle_buffer_size)
-        ds = ds.repeat()
-        ds = ds.batch(batch_size)
-        ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-        return ds
-
-    data_generator = {}
-    for x in folders:
-        is_train = True if x == 'train' else False
-        cache = x + '.tfcache'
-        dir_extend = dir_path + '/' + x
-        list_ds = tf.data.Dataset.list_files(str(dir_extend+'/*'))
-        
-        # Assuming your data is not images, you might not need a parsing function
-        # Modify the lambda function accordingly based on your data format
-        labeled_ds = list_ds.map(
-            lambda file_path: (your_custom_data_loading_function(file_path), label_from_file_path(file_path)),
-            num_parallel_calls=tf.data.experimental.AUTOTUNE
-        )
-        
-        data_generator[x] = prepare_for_training(
-            labeled_ds, cache=cache, shuffle_buffer_size=1000
+        for sample_idx in range(num_samples):
+            # Reading data from the CSV file
+            # Adjust this line based on your CSV file structure
+            data_point = tuple(csv_data.iloc[sample_idx, :].values)
+            
+            time.sleep(0.015)  # Simulating data loading delay
+            
+            yield data_point
+    
+    def __new__(cls, file_path):
+        return tf.data.Dataset.from_generator(
+            cls._generator,
+            output_signature=tf.TensorSpec(shape=(None,), dtype=tf.float32),  # Adjust dtype and shape accordingly
+            args=(file_path,)
         )
 
-    return data_generator
+# Example usage
+csv_file_path = 'your_csv_file.csv'
+dataset = CsvDataset(file_path=csv_file_path)
 
-# Example functions (replace with your actual data loading and label functions)
-def your_custom_data_loading_function(file_path):
-    # Implement your data loading logic for non-image data
-    return tf.constant(0.0)  # Replace with actual loaded data
-
-def label_from_file_path(file_path):
-    # Implement your logic to extract labels from file path
-    return tf.constant(0) 
+# Iterate through the dataset
+for data_point in dataset:
+    print(data_point)
