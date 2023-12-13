@@ -1,28 +1,23 @@
-# Create a sample DataFrame
-data = {'column1': [1, 2, 3, 4, 5],
-        'column2': ['a', 'b', 'c', 'd', 'e']}
-df = pd.DataFrame(data)
+import numpy as np
+import tensorflow as tf
 
-# Add an index column to the DataFrame
-df['index'] = df.index
+x_train = np.random.random((50, 730, 1))
+ts_train = np.random.random((50, 730, 3))
+y_train = np.random.random((50, 5))
 
-# Convert the DataFrame to a TensorFlow dataset
-dataset = tf.data.Dataset.from_tensor_slices(df.to_dict('list'))
+ds = tf.data.Dataset.from_tensor_slices(((x_train, ts_train), y_train))
 
-# Use enumerate to add indices to each element of the dataset
-indexed_dataset = dataset.enumerate()
+for (x, t), y in ds.take(1):
+  print(x.shape, t.shape, y.shape)
+(730, 1) (730, 3) (5,)
+And here is an example model:
 
-# Shuffle the dataset
-shuffled_dataset = indexed_dataset.shuffle(buffer_size=len(df))
-
-# Extract the shuffled indices and elements
-shuffled_indices = shuffled_dataset.map(lambda x: x[0])
-shuffled_elements = shuffled_dataset.map(lambda x: x[1])
-
-# Iterate over 'shuffled_indices' and 'shuffled_elements' together
-for index, element in zip(shuffled_indices, shuffled_elements):
-    original_index = element['index'].numpy()
-    original_data = {'column1': element['column1'].numpy(),
-                     'column2': element['column2'].numpy()}
-    
-    print("Original Index:", original_index, "Original Data:", original_data)
+input1 = tf.keras.layers.Input((730, 1))
+input2 = tf.keras.layers.Input((730, 3))
+x = tf.keras.layers.Flatten()(input1)
+y = tf.keras.layers.Flatten()(input2)
+outputs = tf.keras.layers.Concatenate()([x, y])
+outputs = tf.keras.layers.Dense(5)(outputs)
+model = tf.keras.Model([input1, input2], outputs)
+model.compile(optimizer='adam', loss='mse')
+model.fit(ds.batch(10), epochs=5)
